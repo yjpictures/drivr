@@ -4,6 +4,8 @@ from scipy.spatial import distance
 
 EAR_CUTOFF: float = 0.2
 CAMERA_PORT: int = 0
+INSTANCE_SIZE: int = 200
+INSTANCE_LIMIT: int = 150
 DATABASE: str = "shape_predictor_68_face_landmarks.dat"
 
 
@@ -18,6 +20,8 @@ def calculate_EAR(eye):
 camera_capture = cv2.VideoCapture(CAMERA_PORT)                  # selecting the camera port
 default_face_detector = dlib.get_frontal_face_detector()        # default face detector using dlib
 dlib_68_point_detection = dlib.shape_predictor(DATABASE)        # maps out points on the face
+
+instances_closed: list = []
 
 while True:
     _, frame = camera_capture.read()
@@ -47,11 +51,17 @@ while True:
             # border_around_eye(x, y, each_eye_point)
         EAR = round((calculate_EAR(leftEye) + calculate_EAR(rightEye)) / 2, 2)
 
-        if EAR < EAR_CUTOFF:
-            # interrupt detected
-            # the line below writes text on the photo
-            # cv2.putText(frame, "WAKE UP!!", (20, 100), cv2.FONT_HERSHEY_SIMPLEX, 3, (255, 255, 255), 4)
+        if len(instances_closed) >= INSTANCE_SIZE:
+            instances_closed.pop(0)
+        # This will write True or False if a frame captures eyes closed in the list
+        instances_closed.append(True) if EAR < EAR_CUTOFF else instances_closed.append(False)
+
+        if len(instances_closed) == INSTANCE_SIZE and instances_closed.count(True) > INSTANCE_LIMIT:
+            # interrupt for the scoring algorithm
             print("driver is drowsy")
+            # the line below writes text on the photo
+            # cv2.putText(frame, "ALERT!!", (20, 100), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 4)
+
         # continuous EAR print
         # print(EAR)
 
